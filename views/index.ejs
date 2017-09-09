@@ -58,7 +58,7 @@
   var socket = io();
 
   socket.on('init', function(data){
-    console.log(data);
+    
     var names = data.join(',');
     $('#names').html('')
     data.map(function(name,index){
@@ -68,7 +68,7 @@
     $.getJSON('/api/infostock?names='+names, function(quotes){
          var dataStocks = [];
         
-        console.log(quotes);
+        
         d3.select('svg').remove();
         d3.select('.chart').append('svg')
           .attr('width', 960)
@@ -79,7 +79,7 @@
              dataStocks.push({symbol: value.symbol,date: new Date(value.date), close: value.close})
           })
         }
-        console.log(dataStocks)
+       
         
          var margin  = {
           top: 20,
