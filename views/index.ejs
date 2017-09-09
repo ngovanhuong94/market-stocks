@@ -64,7 +64,7 @@
     data.map(function(name,index){
        $('#names').append('<span class="name-stock">'+name+'<button class="delete btn btn-default" id="'+index+'"><span class="glyphicon glyphicon-remove"></span></button></span>')
     })
-    console.log(names);
+    
     $.getJSON('/api/infostock?names='+names, function(quotes){
          var dataStocks = [];
         
