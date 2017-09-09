@@ -1,0 +1,178 @@
+<!doctype html>
+<html>
+<head>
+<title>Market Stocks</title>
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+<link rel="stylesheet prefetch" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+<link rel="stylesheet prefetch" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" >
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="/js/d3-tip.js"></script>
+<link rel="stylesheet" type="text/css" href="/style/style.css">
+<style type="text/css">
+
+.axis--x path {
+  display: none;
+}
+
+.line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 2.5px;
+}
+
+.name-stock {
+  margin-left: 30px;
+
+}
+
+.delete {
+  color: red;
+  margin-left: 5px;
+
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="chart">
+<h2 class='text-center'>This is multiple line chart stocks in time 3 months</h2>
+</div>
+<svg width="960" height="500"></svg>
+<div class="form-group">
+<input type="text" class='form-control' id="name-stock" placeholder="Stock Name" name="name-stock"/> 
+
+<button id="add-stock" class="btn btn-primary">Add Stock</button>
+
+
+<div id="names"></div>
+</div>
+</div>
+<script>
+  $(document).ready(function(){
+
+
+ 
+  var socket = io();
+
+  socket.on('init', function(data){
+    console.log(data);
+    var names = data.join(',');
+    $('#names').html('')
+    data.map(function(name,index){
+       $('#names').append('<span class="name-stock">'+name+'<button class="delete btn btn-default" id="'+index+'"><span class="glyphicon glyphicon-remove"></span></button></span>')
+    })
+    console.log(names);
+    $.getJSON('/api/infostock?names='+names, function(quotes){
+         var dataStocks = [];
+        
+        console.log(quotes);
+        d3.select('svg').remove();
+        d3.select('.chart').append('svg')
+          .attr('width', 960)
+          .attr('height', 500)
+        for(var index in quotes){
+          var arr = quotes[index];
+          arr.map(function(value){
+             dataStocks.push({symbol: value.symbol,date: new Date(value.date), close: value.close})
+          })
+        }
+        console.log(dataStocks)
+        
+         var margin  = {
+          top: 20,
+          right: 50,
+          bottom: 30,
+          left: 50
+         }
+        var tip = d3.tip()
+                   .attr('class', 'd3-tip')
+                   .html(function(d){
+                    return '<span>'+d+'</span>'
+                   })
+        var svg = d3.select("svg"),
+          margin = {top: 20, right: 80, bottom: 30, left: 50},
+          width = svg.attr("width") - margin.left - margin.right,
+          height = svg.attr("height") - margin.top - margin.bottom,
+          g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");          
+       svg.call(tip);
+       var x = d3.scaleTime().range([0, width]);
+       var y = d3.scaleLinear().range([0, height]);
+       var z = d3.scaleOrdinal(d3.schemeCategory10);
+
+       var line = d3.line()
+                  .curve(d3.curveBasis)
+                  .x(function(d){return x(new Date(d.date))})
+                  .y(function(d){return y(d.close)});
+
+      x.domain(d3.extent(dataStocks, function(d){ return d.date}))
+      y.domain([
+       d3.min(dataStocks, function(d){ return d.close}) - 50,
+       d3.max(dataStocks, function(d){ return d.close}) + 100
+        ])
+      
+      z.domain(dataStocks.map(function(value){ return value.symbol}))
+      
+     g.append("g")
+      .attr("class", "axis axis--x")
+      .attr("transform", "translate(0," + height + ")")
+      .call(d3.axisBottom(x));
+    
+     g.append("g")
+      .attr("class", "axis axis--y")
+      .call(d3.axisLeft(y))
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", "0.71em")
+      .attr("fill", "#000")
+      
+     
+      var qoute = g.selectAll('.qoute')
+                 .data(Object.keys(quotes))
+                 .enter().append('g')
+                  .attr('class', 'qoute')
+      qoute.append('path')
+           .attr('class', 'line')
+           .attr('d', function(d){ return line(quotes[d])})
+           .style("stroke", function(d) { return z(d); })
+           .on('mouseover', tip.show)
+           .on('mouseout', tip.hide)
+      
+      qoute.append('text')
+      .datum(function(d){return {id: d, value: quotes[d][0]}})
+      .attr("transform", function(d) { return "translate(" + x(new Date(d.value.date)) + "," + y(d.value.close) + ")"; })
+      .attr('x', 3)
+      .attr('dy', '0.35em')
+      .style('font', '18px sans-serif')
+      .text(function(d){ return d.id})
+    })
+  })
+  
+  $('#add-stock').click(function(){
+    var nameStock = $('#name-stock').val();
+    $.getJSON('/api/infostock?names='+nameStock, function(data){
+      if(data[nameStock].length > 0 ){
+       socket.emit('add stock', nameStock)
+      }else {
+        alert('This stock dont have in database, sorry')
+      }
+       
+    })
+    
+  })
+
+   $('#names').on('click', '.delete', function(){
+    
+    var id = $(this).attr('id');
+     socket.emit('remove stock', id);
+   })
+ })
+ 
+
+  
+</script>
+</body>
+</html>
